@@ -14,4 +14,13 @@ const (
 	TypeRoll   MessageType = "roll"
 	TypeReRoll MessageType = "reroll"
 	TypeSync   MessageType = "sync"
+	TypeCommit MessageType = "commit"
 )
+
+type ReRollPayload struct {
+	Changes [6]bool `json:"changes"`
+}
+
+type CommitPayload struct {
+	CommitIndex int `json:"commitIndex"`
+}

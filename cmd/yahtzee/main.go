@@ -1,10 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
-	"math/rand/v2"
 	"net/http"
 
+	"github.com/ScaryFrogg/yahtzee_server/internal/service"
 	"github.com/ScaryFrogg/yahtzee_server/internal/types"
 	"github.com/gorilla/websocket"
 )
@@ -30,20 +31,36 @@ func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received message: %s\n", req)
 		//TODO cleanup, refactor, split responsibility
 		switch req.Type {
+		case types.TypeSync:
+			conn.WriteJSON(testBoard)
 		case types.TypeRoll:
-			arr := []int{rand.IntN(6) + 1, rand.IntN(6) + 1, rand.IntN(6) + 1, rand.IntN(6) + 1, rand.IntN(6) + 1, rand.IntN(6) + 1}
-			conn.WriteJSON(arr)
+			service.Roll(testBoard, [6]bool{})
 		case types.TypeReRoll:
-			// var p ReRollPayload
-			// if err := json.Unmarshal(req.Payload, &p); err != nil {
-			// 	return err
-			// }
-			conn.WriteJSON("{'status':'ok'}")
+			var payload types.ReRollPayload
+			if err := json.Unmarshal(req.Payload, &payload); err != nil {
+				log.Println(err)
+				conn.WriteJSON("{'status':'failed_unmarshalling'}")
+				return
+			}
+			service.Roll(testBoard, payload.Changes)
+			conn.WriteJSON(testBoard.CurrentRoll)
+			conn.WriteJSON(service.Calculate(*testBoard))
+		case types.TypeCommit:
+			var payload types.CommitPayload
+			if err := json.Unmarshal(req.Payload, &payload); err != nil {
+				log.Println(err)
+				conn.WriteJSON("{'status':'failed_unmarshalling'}")
+				return
+			}
+			service.Commit(testBoard, payload.CommitIndex)
 		default:
 			conn.WriteJSON("{'status':'unknown_type'}")
 		}
+
 	}
 }
+
+var testBoard = types.NewBoard()
 
 func main() {
 	webSocketHandler := webSocketHandler{
