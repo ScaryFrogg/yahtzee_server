@@ -12,16 +12,29 @@ import (
 
 type webSocketHandler struct {
 	upgrader websocket.Upgrader
+	room     *types.Room
 }
 
 func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	playerID := r.URL.Query().Get("playerId")
+	if playerID == "" {
+		http.Error(w, "player parameter required", http.StatusBadRequest)
+		return
+	}
+
 	conn, err := wsh.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("error %s when upgrading connection to websocket", err)
 		return
 	}
 	defer conn.Close()
-	//TODO handle close/disconnect
+
+	player, err := wsh.room.AddPlayer(playerID, conn)
+	if err != nil {
+		conn.WriteJSON(map[string]string{"error": err.Error()})
+		return
+	}
+	board := player.Board
 	for {
 		var req types.Message
 		if err := conn.ReadJSON(&req); err != nil {
@@ -32,9 +45,9 @@ func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		//TODO cleanup, refactor, split responsibility
 		switch req.Type {
 		case types.TypeSync:
-			conn.WriteJSON(testBoard)
+			conn.WriteJSON(board)
 		case types.TypeRoll:
-			service.Roll(testBoard, [6]bool{})
+			service.Roll(board, [6]bool{})
 		case types.TypeReRoll:
 			var payload types.ReRollPayload
 			if err := json.Unmarshal(req.Payload, &payload); err != nil {
@@ -42,9 +55,9 @@ func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				conn.WriteJSON("{'status':'failed_unmarshalling'}")
 				return
 			}
-			service.Roll(testBoard, payload.Changes)
-			conn.WriteJSON(testBoard.CurrentRoll)
-			conn.WriteJSON(service.Calculate(*testBoard))
+			service.Roll(board, payload.Changes)
+			conn.WriteJSON(board.CurrentRoll)
+			conn.WriteJSON(service.Calculate(board))
 		case types.TypeCommit:
 			var payload types.CommitPayload
 			if err := json.Unmarshal(req.Payload, &payload); err != nil {
@@ -52,18 +65,20 @@ func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				conn.WriteJSON("{'status':'failed_unmarshalling'}")
 				return
 			}
-			service.Commit(testBoard, payload.CommitIndex)
+			service.Commit(board, payload.CommitIndex)
+			conn.WriteJSON(board.Rows)
 		default:
 			conn.WriteJSON("{'status':'unknown_type'}")
 		}
-
+		for _, player := range wsh.room.Players {
+			types.LogPlayerBoard(player)
+		}
 	}
 }
 
-var testBoard = types.NewBoard()
-
 func main() {
 	webSocketHandler := webSocketHandler{
+		room: types.CreateRoom("asd"),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,

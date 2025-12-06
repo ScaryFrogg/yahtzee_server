@@ -3,9 +3,8 @@ package types
 import "encoding/json"
 
 type Message struct {
-	PlayerId string          `json:"playerId"`
-	Type     MessageType     `json:"type"`
-	Payload  json.RawMessage `json:"payload"`
+	Type    MessageType     `json:"type"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 type MessageType string

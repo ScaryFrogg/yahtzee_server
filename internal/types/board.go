@@ -1,5 +1,10 @@
 package types
 
+import (
+	"fmt"
+	"strings"
+)
+
 const BOARD_ROW_COUNT = 6
 
 type Board struct {
@@ -46,3 +51,41 @@ const (
 	RowStraight RowIndex = 8
 	RowTODO     RowIndex = 9
 )
+
+func LogPlayerBoard(player *Player) {
+	playerId := player.Id
+	board := player.Board
+	fmt.Printf("\n┌─ Player: %s\n", playerId)
+	fmt.Printf("│  Current Roll (Count: %d): ", board.RollCount)
+	for i, die := range board.CurrentRoll {
+		fmt.Printf("[%d]", die)
+		if i < len(board.CurrentRoll)-1 {
+			fmt.Print(" ")
+		}
+	}
+	fmt.Println()
+	fmt.Println("│")
+
+	for rowIdx, row := range board.Rows {
+		status := " "
+		if row.Complete {
+			status = "✓"
+		}
+		fmt.Printf("│  Row %2d [%s]: ", rowIdx, status)
+
+		for fieldIdx := range 6 {
+			if fieldIdx < row.CurrIndex {
+				fmt.Printf("[%2d]", row.Fields[fieldIdx])
+			} else if fieldIdx == row.CurrIndex {
+				fmt.Print("[>>]")
+			} else {
+				fmt.Print("[  ]")
+			}
+			if fieldIdx < 5 {
+				fmt.Print(" ")
+			}
+		}
+		fmt.Println()
+	}
+	fmt.Println("└" + strings.Repeat("─", 70))
+}
