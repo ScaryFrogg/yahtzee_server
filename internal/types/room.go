@@ -33,7 +33,7 @@ func (room *Room) AddPlayer(playerID string, conn *websocket.Conn) (*Player, err
 
 func (room *Room) CheckAllCommitted() bool {
 	for _, player := range room.Players {
-		if !player.Board.Waiting {
+		if player.Board.Waiting {
 			return false
 		}
 	}

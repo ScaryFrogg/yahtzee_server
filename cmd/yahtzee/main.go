@@ -41,11 +41,8 @@ func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Failed to decode request: %v", err)
 			return
 		}
-		log.Printf("Received message: %s\n", req)
 		//TODO cleanup, refactor, split responsibility
 		switch req.Type {
-		case types.TypeSync:
-			conn.WriteJSON(board)
 		case types.TypeRoll:
 			service.Roll(board, [6]bool{})
 		case types.TypeReRoll:
@@ -57,7 +54,6 @@ func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			service.Roll(board, payload.Changes)
 			conn.WriteJSON(board.CurrentRoll)
-			conn.WriteJSON(service.Calculate(board))
 		case types.TypeCommit:
 			var payload types.CommitPayload
 			if err := json.Unmarshal(req.Payload, &payload); err != nil {
@@ -66,10 +62,21 @@ func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			service.Commit(board, payload.CommitIndex)
-			conn.WriteJSON(board.Rows)
+
+			//start next round if everyone is ready
+			if wsh.room.CheckAllCommitted() {
+				//fan out to notify all players
+				for _, p := range wsh.room.Players {
+					service.Roll(p.Board, [6]bool{})
+					p.Board.Waiting = true
+					p.Conn.WriteJSON(p.Board.CurrentRoll)
+				}
+			}
+
 		default:
 			conn.WriteJSON("{'status':'unknown_type'}")
 		}
+
 		for _, player := range wsh.room.Players {
 			types.LogPlayerBoard(player)
 		}

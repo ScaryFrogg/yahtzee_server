@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log"
 	"math/rand/v2"
 
 	"github.com/ScaryFrogg/yahtzee_server/internal/types"
@@ -22,16 +23,16 @@ func Roll(board *types.Board, changes [6]bool) [6]int {
 	}
 	board.RollCount++
 
+	calculate(board)
+
 	return board.CurrentRoll
 }
 
-func Calculate(board *types.Board) [types.BOARD_ROW_COUNT]int {
+func calculate(board *types.Board) [types.BOARD_ROW_COUNT]int {
 	result := [types.BOARD_ROW_COUNT]int{}
 	for _, v := range board.CurrentRoll {
 		//calculate sum fields
 		result[v-1] = result[v-1] + v
-
-		//TODO calculate other
 	}
 	board.CachedOptions = result
 
@@ -40,9 +41,10 @@ func Calculate(board *types.Board) [types.BOARD_ROW_COUNT]int {
 
 func Commit(board *types.Board, commitIndex int) {
 	commitValue := board.CachedOptions[commitIndex]
-	commitRow := board.Rows[commitIndex]
+	commitRow := &board.Rows[commitIndex]
 
-	if commitRow.Complete {
+	if commitRow.Complete || !board.Waiting {
+		log.Println("already commited or complete")
 		return
 	}
 
@@ -51,4 +53,6 @@ func Commit(board *types.Board, commitIndex int) {
 	if commitRow.CurrIndex > 5 {
 		commitRow.Complete = true
 	}
+	board.Waiting = false
+	board.RollCount = 0
 }

@@ -40,22 +40,18 @@ func NewBoard() *Board {
 type RowIndex int
 
 const (
-	Row1        RowIndex = 0
-	Row2        RowIndex = 1
-	Row3        RowIndex = 2
-	Row4        RowIndex = 3
-	Row5        RowIndex = 4
-	Row6        RowIndex = 5
-	RowMax      RowIndex = 6
-	RowMim      RowIndex = 7
-	RowStraight RowIndex = 8
-	RowTODO     RowIndex = 9
+	Row1 RowIndex = 0
+	Row2 RowIndex = 1
+	Row3 RowIndex = 2
+	Row4 RowIndex = 3
+	Row5 RowIndex = 4
+	Row6 RowIndex = 5
 )
 
 func LogPlayerBoard(player *Player) {
 	playerId := player.Id
 	board := player.Board
-	fmt.Printf("\n┌─ Player: %s\n", playerId)
+	fmt.Printf("\n┌─ Player: %s    waiting for commit?(%t)\n", playerId, player.Board.Waiting)
 	fmt.Printf("│  Current Roll (Count: %d): ", board.RollCount)
 	for i, die := range board.CurrentRoll {
 		fmt.Printf("[%d]", die)
@@ -71,7 +67,7 @@ func LogPlayerBoard(player *Player) {
 		if row.Complete {
 			status = "✓"
 		}
-		fmt.Printf("│  Row %2d [%s]: ", rowIdx, status)
+		fmt.Printf("│ [%2d] [%s]: ", rowIdx+1, status)
 
 		for fieldIdx := range 6 {
 			if fieldIdx < row.CurrIndex {
